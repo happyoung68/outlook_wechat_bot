@@ -610,8 +610,8 @@ class MyWindow(QWidget):
     def send_to_wechat(self, markdown_content):
         """发送消息到企业微信"""
         try:
-            WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=74287684-05e7-4536-bd49-d96504b8b835"  # MID_SOA播报
-            # WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=775c679c-eb9d-4b44-b971-9f9369c2c32f"  # 测试机器人
+            WEBHOOK_URL = "https://qyapi.536-bd49-d96504b8b835"  # MID_SOA播报
+            # WEBHOOK_URL = "https://qy69c2c32f"  # 测试机器人
 
             data = {
                 "msgtype": "markdown",
