@@ -6,10 +6,14 @@ from PyQt5.QtGui import QFont, QPalette, QColor, QIcon
 import win32com.client
 import os
 import re
-import pandas as pd
 import requests
 from datetime import datetime, timedelta
 from PyQt5.QtGui import QFont, QPalette, QColor, QPixmap, QIcon, QTextCursor
+from openpyxl import load_workbook
+import pandas as pd
+from bs4 import BeautifulSoup
+import zipfile
+import win32com.client as win32
 
 
 class MyWindow(QWidget):
@@ -138,6 +142,18 @@ class MyWindow(QWidget):
         filter_layout.addWidget(self.input_var2)
         input_layout.addLayout(filter_layout)
 
+        # 装车阶段
+        pt_layout = QHBoxLayout()
+        pt_label = QLabel("装车阶段:")
+        pt_label.setMinimumWidth(100)
+        self.input_var3 = QLineEdit()
+        self.input_var3.setPlaceholderText("示例：PT1")
+        pt_layout.addWidget(pt_label)
+        pt_layout.addWidget(self.input_var3)
+        input_layout.addLayout(pt_layout)
+
+
+
         main_layout.addWidget(input_group)
 
         # 操作按钮区域
@@ -206,6 +222,118 @@ class MyWindow(QWidget):
         self.progress_bar.setFormat(message)
         QApplication.processEvents()
 
+    # def read_outlook_emails(self, message_name, shaixuan_name):
+    #     self.update_progress(10, "正在连接Outlook...")
+    #     zhengwen = None
+    #     xlsx_path = None
+    #     current_dir = os.getcwd()
+    #
+    #     try:
+    #         # 连接 Outlook
+    #         outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    #
+    #         # 获取收件箱
+    #         inbox = outlook.GetDefaultFolder(6)  # 6 表示收件箱
+    #
+    #         # 获取邮件列表（按接收时间倒序）
+    #         messages = inbox.Items
+    #         messages.Sort("[ReceivedTime]", True)
+    #
+    #         self.update_progress(20, "正在搜索邮件...")
+    #
+    #         # 遍历邮件
+    #         for i, msg in enumerate(messages):
+    #             if i >= 50:  # 最多检查50封邮件
+    #                 break
+    #             if msg.Subject == message_name:
+    #                 self.status_label.setText(f"找到匹配邮件: {msg.Subject}")
+    #                 self.update_progress(30, "处理邮件内容...")
+    #
+    #                 # 处理正文
+    #                 zhengwen = msg.Body
+    #
+    #                 # 处理附件
+    #                 for attachment in msg.Attachments:
+    #                     file_name = attachment.FileName
+    #                     save_path = os.path.join(current_dir, file_name)
+    #                     if file_name.lower().endswith('.xlsx'):
+    #                         attachment.SaveAsFile(save_path)
+    #                         xlsx_path = save_path
+    #                         self.status_label.setText(f"已保存附件: {file_name}")
+    #
+    #                 if xlsx_path:
+    #                     return zhengwen, xlsx_path
+    #
+    #         if not zhengwen or not xlsx_path:
+    #             self.status_label.setText("未找到匹配的邮件或附件")
+    #             return None, None
+    #
+    #     except Exception as e:
+    #         self.status_label.setText(f"Outlook错误: {str(e)}")
+    #         return None, None
+
+    # def read_outlook_emails(self, message_name, shaixuan_name):
+    #     self.update_progress(10, "正在连接Outlook...")
+    #     zhengwen = None
+    #     xlsx_path = None
+    #     current_dir = os.getcwd()
+    #
+    #     try:
+    #         # 连接 Outlook
+    #         outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    #
+    #         # 获取所有邮箱账户
+    #         accounts = outlook.Folders
+    #
+    #         self.update_progress(20, "正在搜索邮件...")
+    #
+    #         # 遍历所有邮箱账户
+    #         for account in accounts:
+    #             print(account.Name)
+    #             # 获取该账户下的所有文件夹
+    #             for folder in account.Folders:
+    #                 print(folder.Name)
+    #                 # 找到收件箱
+    #                 if folder.Name == "收件箱":
+    #                     print(1)
+    #                     inbox = folder
+    #
+    #                     # 获取邮件列表（按接收时间倒序）
+    #                     messages = inbox.Items
+    #                     messages.Sort("[ReceivedTime]", True)
+    #
+    #                     # 遍历邮件
+    #                     for i, msg in enumerate(messages):
+    #                         if i >= 50:  # 最多检查50封邮件
+    #                             break
+    #                         if msg.Subject == message_name:
+    #                             self.status_label.setText(f"找到匹配邮件: {msg.Subject}")
+    #                             self.update_progress(30, "处理邮件内容...")
+    #
+    #                             # 处理正文
+    #                             zhengwen = msg.Body
+    #
+    #                             # 处理附件
+    #                             for attachment in msg.Attachments:
+    #                                 file_name = attachment.FileName
+    #                                 save_path = os.path.join(current_dir, file_name)
+    #                                 if file_name.lower().endswith('.xlsx'):
+    #                                     attachment.SaveAsFile(save_path)
+    #                                     xlsx_path = save_path
+    #                                     self.status_label.setText(f"已保存附件: {file_name}")
+    #
+    #                             if xlsx_path:
+    #                                 return zhengwen, xlsx_path
+    #
+    #         # 如果没有找到符合条件的邮件或附件
+    #         if not zhengwen or not xlsx_path:
+    #             self.status_label.setText("未找到匹配的邮件或附件")
+    #             return None, None
+    #
+    #     except Exception as e:
+    #         self.status_label.setText(f"Outlook错误: {str(e)}")
+    #         return None, None
+
     def read_outlook_emails(self, message_name, shaixuan_name):
         self.update_progress(10, "正在连接Outlook...")
         zhengwen = None
@@ -216,38 +344,45 @@ class MyWindow(QWidget):
             # 连接 Outlook
             outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
 
-            # 获取收件箱
-            inbox = outlook.GetDefaultFolder(6)  # 6 表示收件箱
-
-            # 获取邮件列表（按接收时间倒序）
-            messages = inbox.Items
-            messages.Sort("[ReceivedTime]", True)
+            # 获取所有邮箱账户
+            accounts = outlook.Folders
 
             self.update_progress(20, "正在搜索邮件...")
 
-            # 遍历邮件
-            for i, msg in enumerate(messages):
-                if i >= 50:  # 最多检查50封邮件
-                    break
-                if msg.Subject == message_name:
-                    self.status_label.setText(f"找到匹配邮件: {msg.Subject}")
-                    self.update_progress(30, "处理邮件内容...")
+            # 遍历所有邮箱账户
+            for account in accounts:
+                print(account.Name)
+                # 获取每个账户的收件箱
+                inbox = account.Folders.Item("收件箱")
 
-                    # 处理正文
-                    zhengwen = msg.Body
+                # 获取邮件列表（按接收时间倒序）
+                messages = inbox.Items
+                messages.Sort("[ReceivedTime]", True)
 
-                    # 处理附件
-                    for attachment in msg.Attachments:
-                        file_name = attachment.FileName
-                        save_path = os.path.join(current_dir, file_name)
-                        if file_name.lower().endswith('.xlsx'):
-                            attachment.SaveAsFile(save_path)
-                            xlsx_path = save_path
-                            self.status_label.setText(f"已保存附件: {file_name}")
+                # 遍历邮件
+                for i, msg in enumerate(messages):
+                    if i >= 50:  # 最多检查50封邮件
+                        break
+                    if msg.Subject == message_name:
+                        self.status_label.setText(f"找到匹配邮件: {msg.Subject}")
+                        self.update_progress(30, "处理邮件内容...")
 
-                    if xlsx_path:
-                        return zhengwen, xlsx_path
+                        # 处理正文
+                        zhengwen = msg.Body
 
+                        # 处理附件
+                        for attachment in msg.Attachments:
+                            file_name = attachment.FileName
+                            save_path = os.path.join(current_dir, file_name)
+                            if file_name.lower().endswith('.xlsx'):
+                                attachment.SaveAsFile(save_path)
+                                xlsx_path = save_path
+                                self.status_label.setText(f"已保存附件: {file_name}")
+
+                        if xlsx_path:
+                            return zhengwen, xlsx_path
+
+            # 如果没有找到符合条件的邮件或附件
             if not zhengwen or not xlsx_path:
                 self.status_label.setText("未找到匹配的邮件或附件")
                 return None, None
@@ -271,24 +406,53 @@ class MyWindow(QWidget):
 
         return True
 
-    def parse_excel_data(self, save_path, shaixuan_name):
-        self.update_progress(50, "解析Excel数据...")
+    def excel_remove_filter(path, sheet_name):
+        # 启动 Excel
+        excel = win32.Dispatch('Excel.Application')
+        excel.Visible = False  # 后台运行
 
         try:
-            # 读取 Excel 文件
-            sheet_name = "ServiceInterfaces"
-            df = pd.read_excel(save_path, sheet_name=sheet_name)
+            # 打开工作簿
+            wb = excel.Workbooks.Open(os.path.abspath(path))
 
+            # 定位工作表
+            for sheet in wb.Sheets:
+                if sheet.Name == sheet_name:
+                    # 清除筛选
+                    if sheet.AutoFilterMode:
+                        sheet.AutoFilterMode = False
+                    # 清除特殊筛选
+                    if sheet.FilterMode:
+                        sheet.ShowAllData()
+                    break
+
+            wb.save(path)
+            wb.Close()
+            return 0
+        finally:
+            excel.Quit()
+
+    def parse_excel_data(self, save_path, shaixuan_name):
+        # save_path = "(07-28_编译反馈_AH8 G3 F.0 α1)GAC_VehicleA_SOMEIP_CMX_CCU_Phase1_(CCU_S32G_MProxy)_V2.2.26_202506031.xlsx"
+        self.update_progress(50, "解析Excel数据...")
+        # print(1)
+        try:
+            # print(2)
+            # 读取 Excel 文件
+            df = pd.read_excel(save_path, sheet_name="ServiceInterfaces")
+            # print(3)
             # 查找列索引
             column_cnt = 0
             for column, value in df.iloc[0].items():
                 if value == "临时打N":
+                    print("临时打N列",column_cnt)
                     break
                 column_cnt += 1
 
             column_owner_cnt = 0
             for column, value in df.iloc[0].items():
                 if column == "Owner":
+                    print("Owner列",column_owner_cnt)
                     break
                 column_owner_cnt += 1
 
@@ -327,7 +491,8 @@ class MyWindow(QWidget):
 
 ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂  
 ■ **失效版本**  
-- GI版本：`{self.gi_version}`  
+- GI版本：**`{self.gi_version}`**  
+- 装车版本：**`{str(self.input_var3.text()).strip()}`**  
 - Host版本：`{self.host_version}`  
 - Mproxy矩阵：`{self.mproxy_version}`  
 ■ **失效服务Service InterFace Name-->Element Name**   
@@ -360,6 +525,7 @@ class MyWindow(QWidget):
         # 获取输入值
         message_name = str(self.input_var1.text()).strip()
         shaixuan_name = str(self.input_var2.text()).strip()
+        pt_name = str(self.input_var3.text()).strip()
 
         # 验证输入
         if not message_name or not shaixuan_name:
@@ -444,8 +610,8 @@ class MyWindow(QWidget):
     def send_to_wechat(self, markdown_content):
         """发送消息到企业微信"""
         try:
-            WEBHOOK_URL = "drgdfrgdrfgdrg5"  # MID_SOA播报
-            # WEBHOOK_URL = "ghjghjghjghjghj"  # 测试机器人
+            WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=74287684-05e7-4536-bd49-d96504b8b835"  # MID_SOA播报
+            # WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=775c679c-eb9d-4b44-b971-9f9369c2c32f"  # 测试机器人
 
             data = {
                 "msgtype": "markdown",
